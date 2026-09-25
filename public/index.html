@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CityPulse: how is your city doing?</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#edf1ef;--panel:#fff;--ink:#17262b;--mute:#5d6f75;--line:#d9e1df;--teal:#0f766e;--healthy:#2e9e5b;--attention:#d9a21b;--warning:#e8742a;--critical:#d33b3b;--pulse:2.6s;--amp:.7;--c:var(--healthy)}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Figtree,system-ui,sans-serif}
+button,input{font:inherit}button{cursor:pointer}:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+header{display:flex;align-items:center;gap:16px;padding:12px 24px;background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{font-weight:800;font-size:22px;letter-spacing:-.02em}.brand small{display:block;font-weight:500;font-size:12px;color:var(--mute)}
+.ecg{flex:1;height:34px;min-width:60px}.ecg path{fill:none;stroke:var(--c);stroke-width:2.2;stroke-dasharray:420;stroke-dashoffset:420;animation:beat var(--pulse) linear infinite;transform:scaleY(var(--amp));transform-origin:center}
+@keyframes beat{to{stroke-dashoffset:0}}
+.live{font-weight:700;font-size:13px;white-space:nowrap}.dot{width:9px;height:9px;border-radius:50%;background:var(--healthy);display:inline-block;margin-right:6px}.dot.off{background:var(--critical)}
+main{max-width:1280px;margin:0 auto;padding:16px 24px 40px;display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.tabs{display:flex;gap:8px;margin-bottom:10px}.tab{border:1px solid var(--line);background:#fff;padding:7px 16px;border-radius:99px;font-weight:700}.tab[aria-selected=true]{background:var(--teal);color:#fff;border-color:var(--teal)}
+.srch{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}.field{position:relative;flex:1;min-width:200px}
+.field input{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.field ul{position:absolute;z-index:1200;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px #0002}
+.field li{padding:8px 10px;border-radius:7px;cursor:pointer}.field li:hover,.field li:focus{background:#eef5f3}.field li.none{color:var(--mute);cursor:default}
+.field ul:empty{display:none}
+.title{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0}.about{color:var(--mute);margin-top:4px}
+.kpis{display:grid;grid-template-columns:1.3fr 1fr 1.4fr;gap:14px}
+.big{font-size:42px;font-weight:800;line-height:1;letter-spacing:-.03em}.big span{font-size:18px;color:var(--mute);font-weight:500}
+.lab{color:var(--mute);font-size:13px}.zc{display:flex;gap:14px;margin-top:6px;font-weight:700;font-size:20px;flex-wrap:wrap}.zc i{font-style:normal;font-size:13px;color:var(--mute);font-weight:500;margin-left:4px}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px}
+.demo{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.demo b{margin-right:4px}
+.btn{border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:9px;font-weight:700}.btn:hover{filter:brightness(.95)}.btn.hero{background:var(--critical);color:#fff;border-color:var(--critical)}.btn.go{background:var(--teal);color:#fff;border-color:var(--teal)}
+.grid{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}#map{height:540px;border-radius:12px;border:1px solid var(--line);z-index:0}
+.side{display:grid;gap:14px;align-content:start}h2{font-size:15px;margin:0 0 8px;font-weight:700}.summary{font-size:17px;line-height:1.45}.src{font-size:12px;color:var(--mute);margin-top:6px}
+.chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;color:#fff}.healthy{background:var(--healthy)}.attention{background:var(--attention)}.warning{background:var(--warning)}.critical{background:var(--critical)}
+.blk{border-top:1px solid var(--line);padding:9px 0}.blk b{display:block;font-size:13px;color:var(--mute);font-weight:500}.factors{margin:6px 0 0;padding-left:18px}
+.feeds{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.feed{font-size:13px}.feed strong{display:block;font-size:15px}
+.tag{font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;background:#e3ecea;color:var(--teal)}.tag.demo{background:#f6ead0;color:#8a6408}
+.alert{border-left:4px solid var(--c);padding:6px 10px;margin:8px 0;background:#f7f9f8;border-radius:0 8px 8px 0}.alert.resolved{opacity:.55}.alert small{color:var(--mute);display:block}
+.lbl{background:#fff;border:2px solid var(--c);border-radius:99px;font-weight:800;font-size:12px;text-align:center;line-height:26px;box-shadow:0 1px 4px #0003}.empty{color:var(--mute)}
+#toasts{position:fixed;top:14px;right:14px;z-index:3000;display:grid;gap:10px;width:340px;max-width:calc(100vw - 28px)}
+.toast{background:#fff;border-left:6px solid var(--c);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px #0004;animation:in .25s}.toast b{display:block}.toast small{color:var(--mute)}.toast button{float:right;border:0;background:none;font-size:18px}
+@keyframes in{from{transform:translateX(30px);opacity:0}}
+#modal{position:fixed;inset:0;background:#0007;z-index:4000;display:none;align-items:center;justify-content:center;padding:16px}#modal.on{display:flex}#modal .card{max-width:520px}
+@media(max-width:860px){header{padding:10px 14px}main{padding:12px 14px 40px}.kpis,.grid{grid-template-columns:1fr}.feeds{grid-template-columns:1fr 1fr}#map{height:340px}
+#zone.open{position:fixed;left:0;right:0;bottom:0;max-height:62vh;overflow:auto;border-radius:16px 16px 0 0;z-index:1000;box-shadow:0 -6px 24px #0003}}
+@media(prefers-reduced-motion:reduce){.ecg path{animation:none;stroke-dashoffset:0}.toast{animation:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">CityPulse<small>How is your city doing right now?</small></div>
+  <svg class="ecg" id="ecg" viewBox="0 0 400 34" preserveAspectRatio="none" aria-hidden="true"><path d="M0 17H60l8-3 8 3h40l6-15 9 30 7-15h60l8-3 8 3h40l6-15 9 30 7-15h60l8-3 8 3h30"/></svg>
+  <button class="btn" onclick="$('modal').classList.add('on')">Why do numbers change?</button>
+  <div class="live" id="live"><span class="dot off"></span>Connecting…</div>
+</header>
+<main>
+  <section class="card">
+    <div class="tabs" role="tablist"><button class="tab" role="tab" id="t1" aria-selected="true" onclick="tab(1)">Whole city</button><button class="tab" role="tab" id="t2" aria-selected="false" onclick="tab(2)">Route (from A to B)</button></div>
+    <div class="srch" id="p1"><div class="field"><input id="q1" placeholder="Search a city, e.g. Mumbai, Jodhpur, London" autocomplete="off" aria-label="Search a city"><ul id="l1"></ul></div></div>
+    <div class="srch" id="p2" hidden><div class="field"><input id="qa" placeholder="From (city or town)" autocomplete="off" aria-label="Route start"><ul id="la"></ul></div>
+      <div class="field"><input id="qb" placeholder="To (city or town)" autocomplete="off" aria-label="Route end"><ul id="lb"></ul></div><button class="btn go" onclick="goRoute()">Check route</button></div>
+  </section>
+
+  <section class="card"><h1 class="title" id="ttl">Loading…</h1><div class="about" id="about"></div></section>
+
+  <section class="kpis">
+    <div class="card"><div class="lab" id="k1l">City score</div><div class="big" id="ch">–<span> / 100</span></div><div class="lab" id="chl"></div><svg id="spark" viewBox="0 0 200 40" width="100%" height="36" preserveAspectRatio="none" aria-label="Score over time"></svg></div>
+    <div class="card"><div class="lab">Alerts right now</div><div class="big" id="ka">0</div></div>
+    <div class="card"><div class="lab" id="k3l">Areas</div><div class="zc" id="zc"></div><div class="lab" id="upd" style="margin-top:8px"></div></div>
+  </section>
+
+  <section class="card demo"><b>Demo buttons:</b>
+    <button class="btn hero" onclick="act('heavy-rain')">Simulate heavy rain</button><button class="btn" onclick="act('traffic-incident')">Simulate traffic accident</button>
+    <button class="btn" onclick="act('power-outage/unplanned')">Simulate power outage (unplanned)</button><button class="btn" onclick="act('power-outage/planned')">Simulate maintenance (planned)</button>
+    <button class="btn" onclick="act('crowd-surge')">Simulate crowd/tension spike</button><button class="btn" onclick="act('outage/transit')">Stop / start transit updates</button>
+    <button class="btn" onclick="act('reset')">Reset demo</button></section>
+
+  <section class="grid">
+    <div id="map" role="application" aria-label="Map"></div>
+    <div class="side">
+      <div class="card" id="rt" hidden></div>
+      <div class="card"><h2>What's happening?</h2><div class="summary" id="sum">Loading…</div><div class="src" id="sumsrc"></div></div>
+      <div class="card" id="zone"><h2>Details</h2><div class="empty">Tap a circle on the map to see details.</div></div>
+    </div>
+  </section>
+  <section class="card" id="commuteCard">
+    <h2>Find my area &amp; commute</h2>
+    <p class="lab">Uses your browser's location, only to find the nearest area below. CityPulse never stores or shares your location.</p>
+    <div class="demo"><button class="btn go" onclick="findMe()">📍 Find my area</button><span id="meOut" class="lab"></span></div>
+    <div id="commuteRow" hidden style="margin-top:10px">
+      <label class="lab" for="commuteTo">Commute to:</label>
+      <select id="commuteTo" style="padding:8px 10px;border:1px solid var(--line);border-radius:9px;margin-left:6px"></select>
+      <button class="btn" onclick="checkCommute()">Check ETA</button>
+      <div id="commuteOut" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Report an issue</h2>
+    <p class="lab">No names, phone numbers or addresses are collected, only the area, the issue type and the time. A single report is logged but changes nothing; CityPulse only reacts once about 15 reports of the same problem, in the same area, arrive within 5 minutes. This prevents one person (or spam) from triggering a false alarm.</p>
+    <div class="demo">
+      <select id="repZone" style="padding:8px 10px;border:1px solid var(--line);border-radius:9px"></select>
+      <select id="repType" style="padding:8px 10px;border:1px solid var(--line);border-radius:9px">
+        <option value="waterlogging">Waterlogging</option><option value="accident">Accident</option>
+        <option value="power-outage">Power outage</option><option value="water-outage">Water outage</option><option value="other">Other civic issue</option>
+      </select>
+      <button class="btn go" onclick="sendReport()">Report</button>
+    </div>
+    <div id="repOut" class="lab" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card"><h2>Data sources</h2><div class="feeds" id="feeds"></div></section>
+  <section class="card"><h2>Alerts</h2><div id="alerts"><div class="empty">No alerts. Everything looks calm.</div></div></section>
+</main>
+<div id="toasts" aria-live="assertive"></div>
+<div id="modal" onclick="if(event.target===this)this.classList.remove('on')"><div class="card" role="dialog" aria-label="Why numbers change">
+  <h2>Why do the numbers change?</h2>
+  <p><b>Real data:</b> temperature, wind, rain and air quality come from Open-Meteo. They change only every few minutes or hours, like real weather.</p>
+  <p><b>Demo data:</b> traffic speed, complaints and bus/train delays are made-up (there is no free live feed for them). They drift slowly on their own so the page feels alive, and they jump when you press a demo button.</p>
+  <p>The score moves whenever any of these move. Each item is tagged "real data" or "demo data" under Data sources.</p>
+  <button class="btn go" onclick="$('modal').classList.remove('on')">Got it</button></div></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+async function findMe(){
+  if(!navigator.geolocation)return toast('WARNING','Not available','Your browser does not support location.');
+  $('meOut').textContent='Locating…';
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try{
+      const {latitude:lat,longitude:lon}=pos.coords;
+      const r=await fetch(`/api/nearest?lat=${lat}&lon=${lon}`);const d=await r.json();if(!r.ok)throw new Error(d.error);
+      $('meOut').textContent=`You are closest to ${d.name} (about ${d.distanceKm} km away) · score ${d.health}/100`;
+      $('commuteRow').hidden=false;$('commuteTo').dataset.from=d.zoneId;
+      [...$('commuteTo').options].forEach(o=>o.disabled=o.value===d.zoneId);
+    }catch(e){$('meOut').textContent='';toast('WARNING','Could not find your area',e.message)}
+  },err=>{$('meOut').textContent='';toast('WARNING','Location blocked',err.message||'Allow location access in your browser to use this.')},{timeout:8000});
+}
+async function checkCommute(){
+  const from=$('commuteTo').dataset.from;if(!from)return toast('WARNING','Find your area first','Tap "Find my area" above, then choose where you are going.');
+  const to=$('commuteTo').value;if(to===from)return;
+  try{
+    const r=await fetch(`/api/commute?from=${from}&to=${to}`);const d=await r.json();if(!r.ok)throw new Error(d.error);
+    $('commuteOut').innerHTML=`<b>${esc(d.from)} → ${esc(d.to)}</b>: about ${d.minutes} min (${d.km} km, avg speed ${d.avgSpeed} km/h)${d.note?`<br><span class="lab">${esc(d.note)}</span>`:''}<br><span class="lab">Straight-line estimate using current conditions, not a turn-by-turn route.</span>`;
+  }catch(e){toast('WARNING','Could not calculate',e.message)}
+}
+async function sendReport(){
+  try{
+    const d=await post('report',{zoneId:$('repZone').value,type:$('repType').value});
+    $('repOut').textContent=d.verified?`This is report ${d.count} of ${d.needed} needed — enough reports arrived, so CityPulse has verified this and updated the area.`:`Thanks — this is report ${d.count} of ${d.needed} needed in the last ${d.windowMinutes} minutes for this to be treated as verified.`;
+    if(d.verified)toast('WARNING','Verified by residents','Enough reports arrived in one area to confirm this issue.');
+  }catch(e){toast('WARNING','Could not send report',e.message)}
+}
+</script>
+<script src="/socket.io/socket.io.js">
+async function findMe(){
+  if(!navigator.geolocation)return toast('WARNING','Not available','Your browser does not support location.');
+  $('meOut').textContent='Locating…';
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try{
+      const {latitude:lat,longitude:lon}=pos.coords;
+      const r=await fetch(`/api/nearest?lat=${lat}&lon=${lon}`);const d=await r.json();if(!r.ok)throw new Error(d.error);
+      $('meOut').textContent=`You are closest to ${d.name} (about ${d.distanceKm} km away) · score ${d.health}/100`;
+      $('commuteRow').hidden=false;$('commuteTo').dataset.from=d.zoneId;
+      [...$('commuteTo').options].forEach(o=>o.disabled=o.value===d.zoneId);
+    }catch(e){$('meOut').textContent='';toast('WARNING','Could not find your area',e.message)}
+  },err=>{$('meOut').textContent='';toast('WARNING','Location blocked',err.message||'Allow location access in your browser to use this.')},{timeout:8000});
+}
+async function checkCommute(){
+  const from=$('commuteTo').dataset.from;if(!from)return toast('WARNING','Find your area first','Tap "Find my area" above, then choose where you are going.');
+  const to=$('commuteTo').value;if(to===from)return;
+  try{
+    const r=await fetch(`/api/commute?from=${from}&to=${to}`);const d=await r.json();if(!r.ok)throw new Error(d.error);
+    $('commuteOut').innerHTML=`<b>${esc(d.from)} → ${esc(d.to)}</b>: about ${d.minutes} min (${d.km} km, avg speed ${d.avgSpeed} km/h)${d.note?`<br><span class="lab">${esc(d.note)}</span>`:''}<br><span class="lab">Straight-line estimate using current conditions, not a turn-by-turn route.</span>`;
+  }catch(e){toast('WARNING','Could not calculate',e.message)}
+}
+async function sendReport(){
+  try{
+    const d=await post('report',{zoneId:$('repZone').value,type:$('repType').value});
+    $('repOut').textContent=d.verified?`This is report ${d.count} of ${d.needed} needed — enough reports arrived, so CityPulse has verified this and updated the area.`:`Thanks — this is report ${d.count} of ${d.needed} needed in the last ${d.windowMinutes} minutes for this to be treated as verified.`;
+    if(d.verified)toast('WARNING','Verified by residents','Enough reports arrived in one area to confirm this issue.');
+  }catch(e){toast('WARNING','Could not send report',e.message)}
+}
+</script>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const COL={healthy:'#2e9e5b',attention:'#d9a21b',warning:'#e8742a',critical:'#d33b3b',info:'#0f766e',NOTICE:'#d9a21b',WARNING:'#e8742a',CRITICAL:'#d33b3b'};
+const RANK={healthy:0,attention:1,warning:2,critical:3},LV={CRITICAL:'Serious',WARNING:'Warning',NOTICE:'Note'},ST={healthy:'good',attention:'keep an eye',warning:'problem',critical:'serious'};
+let S=null,CX=null,sel=null,layers={},lines=[],seen=null,fit=false;
+const map=L.map('map',{scrollWheelZoom:false}).setView([26.912,75.79],11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors'}).addTo(map);
+
+function toast(level,title,body,sticky){const t=document.createElement('div');t.className='toast';t.style.setProperty('--c',COL[level]||COL.info);t.setAttribute('role','alert');
+  t.innerHTML=`<button aria-label="Close">×</button><b>${esc(title)}</b><small>${esc(body||'')}</small>`;t.querySelector('button').onclick=()=>t.remove();$('toasts').prepend(t);if(!sticky)setTimeout(()=>t.remove(),7000)}
+const post=async(p,b)=>{const r=await fetch('/api/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});const j=await r.json();if(!r.ok)throw new Error(j.error||'Error');return j};
+async function act(p){try{const j=await post('simulation/'+p);toast('info','Demo',j.message)}catch(e){toast('WARNING','Could not do that',e.message==='Failed to fetch'?'The CityPulse server is not running.':e.message)}}
+function tab(n){$('p1').hidden=n!==1;$('p2').hidden=n!==2;$('t1').setAttribute('aria-selected',n===1);$('t2').setAttribute('aria-selected',n===2)}
+
+function box(inp,list,pick){let t,res=[],n=0;const lab=p=>[p.name,p.region,p.country].filter(Boolean).join(', ');
+  inp.addEventListener('input',()=>{clearTimeout(t);inp._p=null;const q=inp.value.trim();if(q.length<2){list.innerHTML='';return}
+    t=setTimeout(async()=>{const my=++n;try{const r=await fetch('/api/search?q='+encodeURIComponent(q));const d=await r.json();if(my!==n)return;if(!r.ok)throw new Error(d.error);res=d;
+      list.innerHTML=res.length?res.map((p,i)=>`<li tabindex="0" data-i="${i}">${esc(lab(p))}${p.population?` <span class="lab">· ${(p.population/1e6>=1?(p.population/1e6).toFixed(1)+'M':Math.round(p.population/1000)+'k')} people</span>`:''}</li>`).join(''):'<li class="none">No place found</li>'}
+      catch(e){if(my===n)list.innerHTML=`<li class="none">${esc(e.message==='Failed to fetch'?'CityPulse server is not running. Start it with npm start.':e.message)}</li>`}},450)});
+  const choose=e=>{const li=e.target.closest('li[data-i]');if(!li||(e.type==='keydown'&&e.key!=='Enter'))return;const p=res[li.dataset.i];inp._p=p;inp.value=lab(p);list.innerHTML='';pick&&pick(p)};
+  list.onclick=choose;list.onkeydown=choose}
+box($('q1'),$('l1'),async p=>{try{await post('city',p);toast('info','Loading '+p.name,'Getting weather and air quality…')}catch(e){toast('WARNING','Could not load city',e.message)}});
+box($('qa'),$('la'));box($('qb'),$('lb'));
+async function goRoute(){const a=$('qa')._p,b=$('qb')._p;if(!a||!b)return toast('WARNING','Choose both places','Type a place and tap it in the list, for From and To.');
+  try{toast('info','Finding route…','');await post('route',{from:a,to:b})}catch(e){toast('WARNING','Route problem',e.message)}}
+
+const socket=io();
+socket.on('connect',()=>$('live').innerHTML='<span class="dot"></span>Live');
+socket.on('disconnect',()=>$('live').innerHTML='<span class="dot off"></span>Reconnecting…');
+socket.on('context',c=>{CX=c;seen=null;sel=null;fit=false;Object.values(layers).forEach(l=>{l.circle.remove();l.mk.remove()});layers={};lines.forEach(l=>l.remove());lines=[];
+  $('zone').classList.remove('open');$('zone').innerHTML='<h2>Details</h2><div class="empty">Tap a circle on the map to see details.</div>'});
+socket.on('state',s=>{S=s;if(CX)render()});
+
+function fillSelects(){
+  const opts=S.zones.map(z=>`<option value="${z.zoneId}">${esc(z.name)}</option>`).join('');
+  ['repZone','commuteTo'].forEach(id=>{const sel=$(id),cur=sel.value;sel.innerHTML=opts;if([...sel.options].some(o=>o.value===cur))sel.value=cur});
+}
+function render(){
+  const c=S.city,route=CX.mode==='route',i=CX.info||{};
+  fillSelects();
+  $('ttl').textContent=CX.title;
+  $('about').textContent=route?`Driving route · ${S.route?S.route.distanceKm:''} km`:[[i.region,i.country].filter(Boolean).join(', '),i.population?`Population ${(i.population/1e6).toFixed(1)} million`:'',i.timezone].filter(Boolean).join(' · ');
+  if(S.now)$('about').textContent+=` · Now: ${S.now.temp}°C, wind ${S.now.wind} km/h, rain ${S.now.rain} mm, air quality ${S.now.aqi} (${S.now.real?'real data':'demo data'})`;
+  $('k1l').textContent=route?'Route score':'City score';$('k3l').textContent=route?'Points along the route':'Areas';
+  $('ch').innerHTML=`${c.health}<span> / 100</span>`;$('chl').textContent=c.label;$('ka').textContent=c.activeAlerts;
+  $('zc').innerHTML=Object.entries(c.counts).map(([k,v])=>`<div><span class="sw" style="background:${COL[k]}"></span>${v}<i>${ST[k]}</i></div>`).join('');
+  $('upd').textContent='Updated '+new Date(S.ts).toLocaleTimeString();
+  const w=c.health>=75?'healthy':c.health>=55?'attention':c.health>=35?'warning':'critical',r=document.documentElement.style;
+  r.setProperty('--c',COL[w]);r.setProperty('--pulse',{healthy:'2.6s',attention:'1.8s',warning:'1.2s',critical:'.7s'}[w]);r.setProperty('--amp',{healthy:.7,attention:.9,warning:1,critical:1.25}[w]);
+  const h=S.history.map(x=>x.health),n=h.length;$('spark').innerHTML=n>1?`<polyline fill="none" stroke="${COL[w]}" stroke-width="2" points="${h.map((v,k)=>`${k/(n-1)*200},${40-v*.38}`).join(' ')}"/>`:'';
+  $('sum').textContent=S.overview;$('sumsrc').textContent='';
+  const rt=$('rt');rt.hidden=!route||!S.route;if(route&&S.route)rt.innerHTML=`<h2>Your trip</h2><div class="big">${S.route.nowMin}<span> min now</span></div><div class="lab">Usual: ${S.route.normalMin} min · ${S.route.delayMin>=2?S.route.delayMin+' min extra right now':'no big delay'} · ${S.route.distanceKm} km</div>`;
+  drawMap();
+  $('feeds').innerHTML=Object.entries(S.feeds).map(([k,f])=>{const real=f.source==='real data';return `<div class="feed"><strong>${{weather:'🌧 Weather + air',traffic:'🚗 Traffic',incidents:'🚨 Complaints',transit:'🚌 Bus/train'}[k]}</strong>
+    <span style="color:${f.status==='live'?COL.healthy:COL.warning};font-weight:700">${f.status==='live'?'● LIVE':'⚠ OLD DATA'}</span> <span class="tag ${real?'':'demo'}">${f.source}</span><br>${f.status==='live'?'Updated '+f.ageSeconds+' sec ago':'Not updating. Showing old data.'}</div>`}).join('');
+  if(S.alerts.length)$('alerts').innerHTML=S.alerts.slice(0,6).map(a=>`<div class="alert ${a.status}" style="--c:${COL[a.level]}"><b>${LV[a.level]}</b> · ${esc(a.type)} · ${esc(a.zone)} <span class="chip" style="background:${a.status==='active'?COL[a.level]:'#8a9a9f'}">${a.status==='active'?'ongoing':'over'}</span><small>${new Date(a.ts).toLocaleTimeString()} · ${esc(a.evidence.join(' · '))}</small></div>`).join('');
+  else $('alerts').innerHTML='<div class="empty">No alerts. Everything looks calm.</div>';
+  const ids=new Set(S.alerts.map(a=>a.id));if(seen){S.alerts.filter(a=>a.status==='active'&&!seen.has(a.id)).forEach(a=>toast(a.level,`${LV[a.level]}: ${a.type}`,`${a.zone}. ${a.evidence.slice(0,3).join(' · ')}`,a.level==='CRITICAL'))}
+  else S.alerts.filter(a=>a.status==='active').forEach(a=>toast(a.level,`${LV[a.level]}: ${a.type}`,`${a.zone}. ${a.evidence.slice(0,3).join(' · ')}`,a.level==='CRITICAL'));
+  seen=ids;if(sel)drawZone();
+}
+function drawMap(){
+  S.zones.forEach((z,k)=>{const col=COL[z.status],ic=L.divIcon({className:'',iconSize:[50,26],html:`<div class="lbl" style="--c:${col}">${k+1} · ${z.health}</div>`});
+    if(!layers[z.zoneId]){const circle=L.circle([z.latitude,z.longitude],{radius:CX.radiusM,weight:2}).addTo(map),mk=L.marker([z.latitude,z.longitude],{icon:ic,keyboard:true,title:z.name}).addTo(map);
+      [circle,mk].forEach(l=>l.on('click',()=>{sel=z.zoneId;drawZone()}));layers[z.zoneId]={circle,mk}}
+    layers[z.zoneId].circle.setStyle({color:col,fillColor:col,fillOpacity:z.count>=2?.4:.22});layers[z.zoneId].mk.setIcon(ic)});
+  if(CX.route){if(!lines.length)for(let k=0;k<S.zones.length-1;k++)lines.push(L.polyline(CX.route.geometry.slice(S.zones[k].routeIndex,S.zones[k+1].routeIndex+1),{weight:6,opacity:.9}).addTo(map));
+    lines.forEach((l,k)=>{const a=S.zones[k].status,b=S.zones[k+1].status;l.setStyle({color:COL[RANK[a]>=RANK[b]?a:b]})})}
+  if(!fit){fit=true;map.fitBounds(CX.route?L.latLngBounds(CX.route.geometry).pad(.1):L.latLngBounds(S.zones.map(z=>[z.latitude,z.longitude])).pad(.35))}
+}
+function drawZone(){
+  const z=S.zones.find(x=>x.zoneId===sel);if(!z)return;const r=z.reading,el=$('zone');el.classList.add('open');
+  el.innerHTML=`<div style="display:flex;justify-content:space-between"><h2>${esc(z.name)}</h2><button class="btn" style="padding:2px 10px" aria-label="Close" onclick="sel=null;$('zone').classList.remove('open');$('zone').innerHTML='<h2>Details</h2><div class=empty>Tap a circle on the map.</div>'">✕</button></div>
+  <div class="big">${z.health}<span> / 100</span></div> <span class="chip ${z.status}">${esc(z.statusLabel)}</span>${z.count>=2?'<p><b>⚠ There may be a problem here</b></p>':''}
+  <div class="blk"><b>Weather</b>${r.weather.rain>10?'🌧 Heavy rain':'☁ No heavy rain'} · ${r.weather.rain} mm/h · ${r.weather.temperature}°C · wind ${r.weather.wind} km/h · air quality ${r.aqi.value}</div>
+  <div class="blk"><b>Traffic</b>🚗 ${r.traffic.congestion}% traffic jam · ${r.traffic.averageSpeed} km/h (usually ${z.baseline.speed})</div>
+  <div class="blk"><b>Complaints</b>💧 ${r.incidents.waterlogging} waterlogging · 🚨 ${r.incidents.accidents} accidents · ${r.incidents.total} in all</div>
+  <div class="blk"><b>Bus/train</b>🚌 ${r.transit.delay} min late</div>
+  <div class="blk"><b>Public mood (anonymous)</b>${r.tension.value>=65?'😠':r.tension.value>=40?'😐':'🙂'} Tension score ${r.tension.value} / 100 <span class="lab">(from anonymous word patterns, never individual posts or accounts)</span></div>
+  <div class="blk"><b>Utilities</b>⚡ Power: ${r.utility.power==='normal'?'normal':r.utility.power==='outage-planned'?'planned maintenance':'unplanned outage'} · 🚰 Water: ${r.utility.water==='normal'?'normal':r.utility.water==='outage-planned'?'planned maintenance':'unplanned outage'}</div>
+  <div class="blk"><b>What this means</b>${esc(S.summaries[z.zoneId].text)}</div>
+  ${z.count?`<div class="blk"><b>Why we think so</b>${z.count} thing${z.count>1?'s look':' looks'} unusual at the same time<br>How strongly they seem linked: ${z.corrScore} out of 100 (our own estimate)</div>`:''}
+  <div class="blk"><b>What is pulling the score down</b><ul class="factors">${z.factors.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div>
+  ${z.stale.length?`<div class="blk" style="color:var(--critical)">⚠ Old data, not used: ${z.stale.join(', ')}</div>`:''}`;
+}
+
+async function findMe(){
+  if(!navigator.geolocation)return toast('WARNING','Not available','Your browser does not support location.');
+  $('meOut').textContent='Locating…';
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try{
+      const {latitude:lat,longitude:lon}=pos.coords;
+      const r=await fetch(`/api/nearest?lat=${lat}&lon=${lon}`);const d=await r.json();if(!r.ok)throw new Error(d.error);
+      $('meOut').textContent=`You are closest to ${d.name} (about ${d.distanceKm} km away) · score ${d.health}/100`;
+      $('commuteRow').hidden=false;$('commuteTo').dataset.from=d.zoneId;
+      [...$('commuteTo').options].forEach(o=>o.disabled=o.value===d.zoneId);
+    }catch(e){$('meOut').textContent='';toast('WARNING','Could not find your area',e.message)}
+  },err=>{$('meOut').textContent='';toast('WARNING','Location blocked',err.message||'Allow location access in your browser to use this.')},{timeout:8000});
+}
+async function checkCommute(){
+  const from=$('commuteTo').dataset.from;if(!from)return toast('WARNING','Find your area first','Tap "Find my area" above, then choose where you are going.');
+  const to=$('commuteTo').value;if(to===from)return;
+  try{
+    const r=await fetch(`/api/commute?from=${from}&to=${to}`);const d=await r.json();if(!r.ok)throw new Error(d.error);
+    $('commuteOut').innerHTML=`<b>${esc(d.from)} → ${esc(d.to)}</b>: about ${d.minutes} min (${d.km} km, avg speed ${d.avgSpeed} km/h)${d.note?`<br><span class="lab">${esc(d.note)}</span>`:''}<br><span class="lab">Straight-line estimate using current conditions, not a turn-by-turn route.</span>`;
+  }catch(e){toast('WARNING','Could not calculate',e.message)}
+}
+async function sendReport(){
+  try{
+    const d=await post('report',{zoneId:$('repZone').value,type:$('repType').value});
+    $('repOut').textContent=d.verified?`This is report ${d.count} of ${d.needed} needed — enough reports arrived, so CityPulse has verified this and updated the area.`:`Thanks — this is report ${d.count} of ${d.needed} needed in the last ${d.windowMinutes} minutes for this to be treated as verified.`;
+    if(d.verified)toast('WARNING','Verified by residents','Enough reports arrived in one area to confirm this issue.');
+  }catch(e){toast('WARNING','Could not send report',e.message)}
+}
+</script>
+</body>
+</html>
